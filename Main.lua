@@ -12,7 +12,7 @@ local player = Players.LocalPlayer
 --------------------------------------------------
 -- 1) GUARANTEED PRE-LOAD (decal + sound)
 --------------------------------------------------
-local DECAL_ID = "rbxassetid://2822977994"   -- new scary decal
+local DECAL_ID = "rbxassetid://5863570394"   -- new scary decal
 local SOUND_ID = "rbxassetid://5853668794"   -- jumpscare sound
 
 local tempDecal = Instance.new("Decal")
