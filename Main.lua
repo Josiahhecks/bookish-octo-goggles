@@ -1,60 +1,40 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local MarketplaceService = game:GetService("MarketplaceService")
-local ContentProvider = game:GetService("ContentProvider")
+--// Services
+local Players       = game:GetService("Players")
+local SoundService  = game:GetService("SoundService")
+local TweenService  = game:GetService("TweenService")
 
--- Reference or create the RemoteEvent
-local JumpscareEvent = ReplicatedStorage:FindFirstChild("JumpscareEvent") or Instance.new("RemoteEvent")
-JumpscareEvent.Name = "JumpscareEvent"
-JumpscareEvent.Parent = ReplicatedStorage
+local player = Players.LocalPlayer
 
--- Create and configure the jumpscare sound
-local JumpscareSound = Instance.new("Sound")
-JumpscareSound.Name = "JumpscareSound"
-JumpscareSound.SoundId = "rbxassetid://5853668794"
-JumpscareSound.Volume = 1
-JumpscareSound.Parent = game.Workspace
+------------------------------------------------------------------
+-- 1)  FULL-SCREEN JUMPSCARE GUI (scariest decal)
+------------------------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn   = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
--- Preload the sound to avoid delays
-local success, errorMsg = pcall(function()
-    ContentProvider:PreloadAsync({JumpscareSound})
-end)
-if not success then
-    warn("Failed to preload sound: " .. errorMsg)
-end
+local img = Instance.new("ImageLabel")
+img.Image = "rbxassetid://752001941"  -- SCARIEST decal
+img.Size = UDim2.new(1, 0, 1, 0)
+img.BackgroundTransparency = 1
+img.ImageTransparency = 1
+img.Parent = gui
 
--- Get the game creator's username
-local creatorName = "Unknown"
-local success, gameInfo = pcall(function()
-    return MarketplaceService:GetProductInfo(game.PlaceId)
-end)
-if success and gameInfo and gameInfo.Creator then
-    local creatorId = gameInfo.Creator.CreatorTargetId
-    local creatorInfo = pcall(function()
-        return Players:GetNameFromUserIdAsync(creatorId)
-    end)
-    if creatorInfo[1] then
-        creatorName = creatorInfo[2]
-    end
-end
+-- Flash in instantly
+TweenService:Create(img, TweenInfo.new(0.15), {ImageTransparency = 0}):Play()
 
--- Touch detection
-script.Parent.Touched:Connect(function(hit)
-    local player = Players:GetPlayerFromCharacter(hit.Parent)
-    if player then
-        -- Trigger jumpscare and play sound
-        pcall(function()
-            JumpscareSound:Play()
-            JumpscareEvent:FireClient(player)
-        end)
-        
-        -- Wait for jumpscare to complete
-        wait(1.5) -- Reduced to minimize lag
-        
-        -- Kick player
-        local kickReason = string.format("You have been removed for cheating - %s", creatorName)
-        pcall(function()
-            player:Kick(kickReason)
-        end)
-    end
-end)
+------------------------------------------------------------------
+-- 2)  JUMPSCARE SOUND (2D, local-only)
+------------------------------------------------------------------
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://5853668794"
+sound.Volume  = 1
+sound.Parent  = SoundService
+sound:Play()
+
+------------------------------------------------------------------
+-- 3)  FAKE BAN & KICK
+------------------------------------------------------------------
+-- Wait for the sound to finish, then kick
+task.wait(sound.TimeLength + 0.2)
+player:Kick("You have been banned from this experience.")
