@@ -1,54 +1,45 @@
 local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService") -- Server-only, fallback for client
-local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
 
--- Configuration
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1255257736304787486/TkGY3JxSqpvwKCveol6dYHBiRS-qS-TKrPSdZNq661miUX6gIZpJTbCoVT2O_R2U7QC-" -- Replace with your Discord webhook
-local JUMPSCARE_SOUND_ID = "rbxassetid://1837829087" -- Public jumpscare sound (screech)
-local KICK_REASON = "get banned boy just reported you to the admins by josiah"
-local ADMIN_NAME = "roblox" -- Replace with your Roblox username
+-- Reference or create the RemoteEvent for jumpscare
+local JumpscareEvent = ReplicatedStorage:FindFirstChild("JumpscareEvent") or Instance.new("RemoteEvent")
+JumpscareEvent.Name = "JumpscareEvent"
+JumpscareEvent.Parent = ReplicatedStorage
 
--- Send Discord webhook (server-side only)
-local function sendToDiscord(playerName, action, reason)
-    local payload = {
-        ["content"] = "LocalPlayer got rekt!",
-        ["embeds"] = {{
-            ["title"] = "Executor Action",
-            ["color"] = 16711680, -- Red color
-            ["fields"] = {
-                {["name"] = "Action", ["value"] = action, ["inline"] = true},
-                {["name"] = "Target", ["value"] = playerName, ["inline"] = true},
-                {["name"] = "Admin", ["value"] = ADMIN_NAME, ["inline"] = true},
-                {["name"] = "Reason", ["value"] = reason or "N/A", ["inline"] = false},
-                {["name"] = "Extra", ["value"] = "Snagged their iPhone, lol!", ["inline"] = false}
-            },
-            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
-        }}
-    }
-    
-    local success, err = pcall(function()
-        HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(payload), Enum.HttpContentType.ApplicationJson)
-    end)
-    if not success then
-        warn("Webhook failed (likely client-side): " .. err)
-        print("Webhook payload (for manual send): " .. HttpService:JSONEncode(payload))
+-- Reference or create the jumpscare sound
+local JumpscareSound = Instance.new("Sound")
+JumpscareSound.Name = "JumpscareSound"
+JumpscareSound.SoundId = "rbxassetid://5853668794" -- Provided sound ID
+JumpscareSound.Volume = 1
+JumpscareSound.Parent = game.Workspace
+
+-- Get the game creator's username
+local creatorName = "Unknown"
+local success, gameInfo = pcall(function()
+    return MarketplaceService:GetProductInfo(game.PlaceId)
+end)
+if success and gameInfo then
+    local creatorId = gameInfo.Creator.CreatorTargetId
+    local creatorInfo = Players:GetNameFromUserIdAsync(creatorId)
+    if creatorInfo then
+        creatorName = creatorInfo
     end
 end
 
--- Jumpscare and kick
-local function executeKick()
-    -- Play jumpscare sound
-    local sound = Instance.new("Sound")
-    sound.SoundId = JUMPSCARE_SOUND_ID
-    sound.Volume = 1
-    sound.Parent = game.Workspace
-    sound:Play()
-    
-    -- Wait for jumpscare, then kick
-    wait(2)
-    sendToDiscord(LocalPlayer.Name, "Self-Kick", KICK_REASON)
-    LocalPlayer:Kick(KICK_REASON)
-end
-
--- Run it
-executeKick()
+-- Touch detection
+script.Parent.Touched:Connect(function(hit)
+    local player = Players:GetPlayerFromCharacter(hit.Parent)
+    if player then
+        -- Play sound and trigger jumpscare
+        JumpscareSound:Play()
+        JumpscareEvent:FireClient(player)
+        
+        -- Wait for jumpscare to finish
+        wait(2)
+        
+        -- Kick player with reason including creator's username
+        local kickReason = string.format("You have been removed for cheating - %s", creatorName)
+        player:Kick(kickReason)
+    end
+end)
